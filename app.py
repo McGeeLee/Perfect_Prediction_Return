@@ -60,3 +60,4 @@ if run:
 
             st.subheader("📋 数据明细")
             st.dataframe(result)
+            

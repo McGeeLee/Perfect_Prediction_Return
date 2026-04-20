@@ -129,3 +129,4 @@ def get_data(symbol, start, end, token=None):
             return pd.DataFrame()
 
         return df[['trade_date', 'Open', 'Close']]
+    
