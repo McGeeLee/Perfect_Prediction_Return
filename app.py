@@ -40,6 +40,7 @@ if run:
         if df.empty:
             st.error(f"数据为空 | symbol={symbol}")
             st.stop()
+
         else:
             st.success("数据获取成功")
 
@@ -60,4 +61,3 @@ if run:
 
             st.subheader("📋 数据明细")
             st.dataframe(result)
-            
