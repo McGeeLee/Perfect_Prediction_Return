@@ -21,7 +21,8 @@ freq = st.sidebar.selectbox("时间粒度", ["Year", "Month", "Day"])
 
 fee = st.sidebar.slider("单边手续费 (%)", 0.0, 1.0, 0.2) / 100
 
-token = st.sidebar.text_input("Tushare Token", type="password")
+# token = st.sidebar.text_input("Tushare Token", type="password")
+token = st.secrets["token"]
 
 run = st.sidebar.button("运行")
 
