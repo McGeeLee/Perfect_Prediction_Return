@@ -1,54 +1,50 @@
+import yfinance as yf
+import pandas as pd
 import streamlit as st
-from core.data import get_data
-from core.strategy import run_strategy
-from utils.plot import plot_equity
 
-st.set_page_config(page_title="完美预测系统", layout="wide")
-st.title("📊 完美预测交易分析系统")
+st.title("🔍 Yahoo Finance 数据深度调试")
 
-# 使用 Streamlit 缓存机制：相同的参数在 1 小时内不会重复请求网络
-@st.cache_data(ttl=3600)
-def fetch_data_cached(symbol, start, end, token):
-    return get_data(symbol, start, end, token)
+symbol = st.text_input("输入调试代码", "BTC-USD")
+start_date = "2024-01-01"
+end_date = "2024-12-31"
 
-st.sidebar.header("⚙️ 参数设置")
-symbol = st.sidebar.text_input("资产代码", "BTC-USD") # 默认改为 BTC 方便测试
-start = st.sidebar.text_input("开始日期", "20200101")
-end = st.sidebar.text_input("结束日期", "20250101")
-freq = st.sidebar.selectbox("时间粒度", ["Year", "Month", "Day"])
-fee = st.sidebar.slider("单边手续费 (%)", 0.0, 1.0, 0.1) / 100
+if st.button("开始全面检测"):
+    try:
+        st.write(f"正在请求: {symbol}...")
+        # 获取原始数据
+        raw_df = yf.download(symbol, start=start_date, end=end_date, progress=False)
+        
+        if raw_df.empty:
+            st.error("❌ 严重错误：Yahoo 返回了空 Dataframe。可能是被限流或代码不存在。")
+            st.stop()
 
-# 优先从 Secrets 获取 Token，没有则显示输入框
-if "token" in st.secrets:
-    token = st.secrets["token"]
-else:
-    token = st.sidebar.text_input("Tushare Token", type="password")
+        st.success("✅ 成功接收到原始数据")
+        
+        # 1. 检查列结构
+        st.subheader("1. 列结构信息 (Column Structure)")
+        st.code(f"列对象类型: {type(raw_df.columns)}")
+        st.code(f"原始列名列表: {raw_df.columns.tolist()}")
+        
+        if isinstance(raw_df.columns, pd.MultiIndex):
+            st.info("检测到多层索引 (MultiIndex)")
+            for i in range(raw_df.columns.nlevels):
+                st.write(f"Level {i} 内容: {raw_df.columns.get_level_values(i).unique().tolist()}")
 
-if st.sidebar.button("运行分析"):
-    if not token and not symbol.endswith("-USD"):
-        st.warning("请输入 Tushare Token 以获取 A 股数据")
-    else:
-        with st.spinner("📡 正在获取并分析数据..."):
-            df = fetch_data_cached(symbol, start, end, token)
+        # 2. 检查数据前几行
+        st.subheader("2. 原始数据预览 (Raw Data)")
+        st.dataframe(raw_df.head())
 
-            if df.empty:
-                st.error(f"❌ 数据获取失败：请检查代码 '{symbol}' 是否正确，或尝试更换网络（可能被 Yahoo 限流）。")
-            else:
-                st.success(f"✅ 成功获取 {len(df)} 条数据")
-                
-                result = run_strategy(df, fee, freq)
-                
-                # 指标展示
-                c1, c2, c3 = st.columns(3)
-                final_bh = result['bh_cum'].iloc[-1]
-                final_str = result['strategy_cum'].iloc[-1]
-                c1.metric("持股不动收益", f"{final_bh:.2f}x")
-                c2.metric("完美预测收益", f"{final_str:.2f}x")
-                c3.metric("超额倍数", f"{(final_str/final_bh):.1f}x")
+        # 3. 模拟现有的清洗逻辑
+        st.subheader("3. 模拟清洗过程")
+        test_df = raw_df.copy()
+        
+        # 尝试压平
+        if isinstance(test_df.columns, pd.MultiIndex):
+            test_df.columns = test_df.columns.get_level_values(-1)
+            st.write("压平后的列名:", test_df.columns.tolist())
+        
+        test_df = test_df.reset_index()
+        st.write("Reset Index 后的列名:", test_df.columns.tolist())
 
-                # 图表展示
-                st.pyplot(plot_equity(result))
-                
-                # 数据详情
-                with st.expander("查看详细计算数据"):
-                    st.dataframe(result, use_container_width=True)
+    except Exception as e:
+        st.exception(e)
